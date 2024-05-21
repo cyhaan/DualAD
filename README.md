@@ -1,4 +1,3 @@
->📋  A template README.md for code accompanying a Machine Learning paper
 
 # MGCFR
 
@@ -6,7 +5,7 @@ This repository contains the source code for the official implementation in PyTo
 ![Image text](docs/MGCFR.jpg)
 
 
-## Dependencies
+## 1. Dependencies
 
 ```setup
 torch==1.9.0
@@ -21,28 +20,81 @@ tabulate==0.8.10
 scikit-learn==0.24.2
 Pillow==8.4.0
 ```
-
-
-
-## Training
-
-To train the model(s) in the paper, run this command:
-
-```train
-python train.py --input-data <path_to_data> --alpha 10 --beta 20
+## 2. Data preparation
+### 2.1 MVTec-AD
+- Download the MVTec-AD dataset from [here](https://www.mvtec.com/company/research/datasets/mvtec-ad). Unzip the file to `./data/mvtec_anomaly_detection/`. If you wish to adjust the location where the file is stored, you can customize this by editing the `dataset.image_dir` field in  `./experiments/MVTec-AD/config.yaml`. Make sure that the dataset directory follow the data tree:
+```
+|-- mvtec_anomaly_detection
+    |-- bottle
+        |-- ground_truth
+            |-- broken_large
+            |-- ...
+        |-- test
+            |-- broken_large
+            |-- ...
+            |-- good
+        |-- train
+            |-- good
+    |-- cable
+        |-- ...
+    |-- ...
+```
+### 2.2 VisA
+- Download the VisA dataset from [here](https://amazon-visual-anomaly.s3.us-west-2.amazonaws.com/VisA_20220922.tar). Unzip the file to `./data/VisA_20220922/`. If you wish to adjust the location where the file is stored, you can customize this by editing the `dataset.download_dir` field in  `./experiments/VisA/config.yaml`. Make sure that the dataset directory follow the data tree:
+```
+|-- VisA_20220922
+    |-- candle
+        |-- Data
+            |-- Images
+                |-- Anomaly
+                |-- Normal
+            |-- Masks
+                |-- Anomaly
+        |-- image_anno.csv
+    |-- capsules
+        |-- ...
+    |-- ...
+```
+- The first time you run the **training** or **evaluation** command, it will take a few minutes to generate the target dataset directory `./data/VisA_pytorch/`, which is as follows:
+```
+|-- VisA_pytorch
+    |-- candle
+        |-- ground_truth
+            |-- bad
+        |-- test
+            |-- bad
+            |-- good
+        |-- train
+            |-- good
+    |-- capsules
+        |-- ...
+    |-- ...
 ```
 
->📋  Describe how to train the models, with example commands on how to train the models in your paper, including the full training procedure and appropriate hyperparameters.
+## 3. Training
+
+- To train the MGCFR model on **MVTec-AD**, please run:
+```train
+cd ./experiments/MVTec-AD/
+sh train.sh
+```
+- To train the MGCFR model on **VisA**, please run:
+```train
+cd ./experiments/VisA/
+sh train.sh
+```
 
 ## Evaluation
-
-To evaluate my model on ImageNet, run:
-
+- To evaluate the MGCFR model on **MVTec-AD**, please firstly set `saver.load_path` field in `./experiments/MVTec-AD/config.yaml` to load the checkpoints, then run:
 ```eval
-python eval.py --model-file mymodel.pth --benchmark imagenet
+cd ./experiments/MVTec-AD/
+sh eval.sh
 ```
-
->📋  Describe how to evaluate the trained models on benchmarks reported in the paper, give commands that produce the results (section below).
+- To evaluate the MGCFR model on **MVTec-AD**, please firstly set `saver.load_path` field in `./experiments/VisA/config.yaml` to load the checkpoints, then run:
+```eval
+cd ./experiments/VisA/
+sh eval.sh
+```
 
 ## Pre-trained Models
 
@@ -69,6 +121,3 @@ Our model achieves the following performance on:
 
 
 
-## Contributing
-
->📋  Pick a licence and describe how to contribute to your code repository. 
