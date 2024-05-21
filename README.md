@@ -84,7 +84,7 @@ cd ./experiments/VisA/
 sh train.sh
 ```
 
-## Evaluation
+## 4. Evaluation
 - To evaluate the MGCFR model on **MVTec-AD**, please firstly set `saver.load_path` field in `./experiments/MVTec-AD/config.yaml` to load the checkpoints, then run:
 ```eval
 cd ./experiments/MVTec-AD/
@@ -96,24 +96,24 @@ cd ./experiments/VisA/
 sh eval.sh
 ```
 
-## Pre-trained Models
+## 5. Pre-trained Models
 
 You can download pretrained MGCFR models here:
-- [MGCFR checkpoint](https://drive.google.com/file/d/1Le7mzFqhKKVpPLqweuSo_nO1Urm-7BrQ/view?usp=drive_link) trained on all categories of MVTec-AD dataset. 
-- [MGCFR checkpoint](https://drive.google.com/file/d/1oUcUT1qM8ScR91-zIQjXxYuNlR7miDuw/view?usp=drive_link) trained on all categories of VisA dataset. 
+- [MGCFR checkpoint](https://drive.google.com/file/d/1Le7mzFqhKKVpPLqweuSo_nO1Urm-7BrQ/view?usp=drive_link) trained on all categories of **MVTec-AD** dataset. 
+- [MGCFR checkpoint](https://drive.google.com/file/d/1oUcUT1qM8ScR91-zIQjXxYuNlR7miDuw/view?usp=drive_link) trained on all categories of **VisA** dataset. 
 
 
 
-## Results
+## 6. Results
 
 Our model achieves the following performance on:
 
 
-### MVTec-AD
+### 6.1 MVTec-AD
 | Model name | Detection AUROC | Localization AUROC |
 |------------|-----------------|--------------------|
 | MGCFR      | 99.0            | 98.1               |
-### VisA
+### 6.2 VisA
 | Model name | Detection AUROC | Localization AUROC |
 |------------|-----------------|--------------------|
 | MGCFR      | 94.4            | 98.9               |
