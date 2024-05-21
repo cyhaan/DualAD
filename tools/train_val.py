@@ -51,15 +51,6 @@ def main():
 
     config = update_config(config)
 
-    # exp_dir = os.path.dirname(args.config)
-    # # dir_name = "_".join(config.dataset.classes)
-    # dir_name = config.dataset.classes
-    # config.saver.vis_dir = os.path.join(exp_dir, config.saver.vis_dir)
-    # config.saver.log_dir = os.path.join(exp_dir, config.saver.log_dir, dir_name)
-    # config.saver.save_dir = os.path.join(exp_dir, config.saver.save_dir, dir_name)
-    # config.evaluator.eval_dir = os.path.join(exp_dir, config.evaluator.save_dir, dir_name)
-    # config.saver.load_path = os.path.join(config.saver.save_dir, config.saver.ckpt_name + ".pth.tar")
-
     if config.dataset.classes == 'all':
         config.dataset.classes = all_classes.get(config.dataset.type, None)
 
