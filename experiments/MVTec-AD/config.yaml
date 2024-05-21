@@ -5,7 +5,7 @@ port: 11111
 dataset:
   type: MVTecAD
   classes: all
-  image_dir: /root/autodl-fs/datasets/mvtec_anomaly_detection
+  image_dir: ./data/mvtec_anomaly_detection
   use_cache: True
   input_size: [224,224] # [h,w]
   normalize:
@@ -73,7 +73,6 @@ net:
       frozen: True
       kwargs:
         pretrained: True
-        pretrained_model: /root/autodl-fs/modelzoo/wide_resnet50_2-95faca4d.pth
         # select outlayers from: resnet [1,2,3,4], efficientnet [1,2,3,4,5]
         # empirically, for industrial: resnet [1,2,3] or [2,3], efficientnet [1,2,3,4] or [2,3,4]
         outlayers: [ 1,2,3 ]

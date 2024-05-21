@@ -5,7 +5,6 @@ from einops import rearrange
 from models.initializer import initialize_from_cfg
 from torch import Tensor, nn
 
-
 class MGCFR(nn.Module):
     def __init__(self, inplanes, instrides, feature_size, feature_noise, neighbor_mask, proj_mlp_ratio, memory_module,
                  hidden_dim, nhead, dim_feedforward, dropout, num_encoder_layers, num_decoder_layers, pos_embed_type,
