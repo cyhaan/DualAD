@@ -32,8 +32,6 @@ parser.add_argument("--config", default="./config.yaml")
 parser.add_argument("-e", "--evaluate", action="store_true")
 parser.add_argument("-d", "--debug", action="store_true")
 
-# use_cuda = torch.cuda.is_available()
-# device = torch.device("cuda" if use_cuda else "cpu")
 
 all_classes = {
     "MVTecAD": ['carpet', 'grid', 'leather', 'tile', 'wood', 'bottle', 'cable', 'capsule', 'hazelnut', 'metal_nut',

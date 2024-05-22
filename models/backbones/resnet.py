@@ -322,37 +322,37 @@ class ResNet(nn.Module):
         return self
 
 
-def resnet18(pretrained, pretrained_model=None, **kwargs):
+def resnet18(pretrained, pretrained_model="", **kwargs):
     return build_resnet(
         "resnet18", pretrained, [2, 2, 2, 2], pretrained_model, **kwargs
     )
 
 
-def resnet34(pretrained, pretrained_model=None, **kwargs):
+def resnet34(pretrained, pretrained_model="", **kwargs):
     return build_resnet(
         "resnet34", pretrained, [3, 4, 6, 3], pretrained_model, **kwargs
     )
 
 
-def resnet50(pretrained, pretrained_model=None, **kwargs):
+def resnet50(pretrained, pretrained_model="", **kwargs):
     return build_resnet(
         "resnet50", pretrained, [3, 4, 6, 3], pretrained_model, **kwargs
     )
 
 
-def resnet101(pretrained, pretrained_model=None, **kwargs):
+def resnet101(pretrained, pretrained_model="", **kwargs):
     return build_resnet(
         "resnet101", pretrained, [3, 4, 23, 3], pretrained_model, **kwargs
     )
 
 
-def resnet152(pretrained, pretrained_model=None, **kwargs):
+def resnet152(pretrained, pretrained_model="", **kwargs):
     return build_resnet(
         "resnet152", pretrained, [3, 8, 36, 3], pretrained_model, **kwargs
     )
 
 
-def resnext50_32x4d(pretrained, pretrained_model=None, **kwargs):
+def resnext50_32x4d(pretrained, pretrained_model="", **kwargs):
     kwargs["groups"] = 32
     kwargs["width_per_group"] = 4
     return build_resnet(
@@ -360,7 +360,7 @@ def resnext50_32x4d(pretrained, pretrained_model=None, **kwargs):
     )
 
 
-def resnext101_32x8d(pretrained, pretrained_model=None, **kwargs):
+def resnext101_32x8d(pretrained, pretrained_model="", **kwargs):
     kwargs["groups"] = 32
     kwargs["width_per_group"] = 8
     return build_resnet(
@@ -368,14 +368,14 @@ def resnext101_32x8d(pretrained, pretrained_model=None, **kwargs):
     )
 
 
-def wide_resnet50_2(pretrained, pretrained_model=None, **kwargs):
+def wide_resnet50_2(pretrained, pretrained_model="", **kwargs):
     kwargs["width_per_group"] = 64 * 2
     return build_resnet(
         "wide_resnet50_2", pretrained, [3, 4, 6, 3], pretrained_model, **kwargs
     )
 
 
-def wide_resnet101_2(pretrained, pretrained_model=None, **kwargs):
+def wide_resnet101_2(pretrained, pretrained_model="", **kwargs):
     kwargs["width_per_group"] = 64 * 2
     return build_resnet(
         "wide_resnet101_2", pretrained, [3, 4, 23, 3], pretrained_model, **kwargs

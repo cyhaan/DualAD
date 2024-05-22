@@ -5,15 +5,15 @@ port: 11111
 dataset:
   type: VisA
   classes: all
-  download_dir: ./data/VisA_20220922
-  image_dir: ./data/VisA_pytorch
-  use_cache: True
+  download_dir: ../../data/VisA_20220922
+  image_dir: ../../data/VisA_pytorch
+  use_cache: False
   input_size: [224,224] # [h,w]
   normalize:
     mean: [ 0.485, 0.456, 0.406 ]
     std: [ 0.229, 0.224, 0.225 ]
   batch_size: 16
-  num_workers: 2 # number of workers of dataloader for each process
+  num_workers: 4 # number of workers of dataloader for each process
 
 
 criterion:
@@ -31,7 +31,7 @@ trainer:
   max_epoch: 1000
   clip_max_norm: 0.1
   val_freq_epoch: 20
-  print_freq_step: 4
+  print_freq_step: 1
   tb_freq_step: 1
   lr_scheduler:
     type: StepLR
@@ -48,7 +48,8 @@ trainer:
 saver:
   auto_resume: False
   always_save: False
-  load_path: checkpoints/ckpt.pth.tar
+  ckpt_name: ckpt
+  load_path: checkpoints/ckpt_visa_wr50.pth.tar
   save_dir: checkpoints/
   log_dir: log/
 
@@ -62,10 +63,10 @@ evaluator:
   scalar:
     - mean_image_auc
     - mean_pixel_auc
-  vis_compound:
-    save_dir: vis_compound
-    max_score: null
-    min_score: null
+#  vis_compound:
+#    save_dir: vis_compound
+#    max_score: null
+#    min_score: null
 
 frozen_layers: [backbone]
 

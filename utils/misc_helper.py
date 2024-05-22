@@ -8,7 +8,6 @@ from datetime import datetime
 
 import numpy as np
 import torch
-import torch.distributed as dist
 
 
 def basicConfig(*args, **kwargs):
@@ -74,12 +73,12 @@ class AverageMeter(object):
 
 def save_checkpoint(state, is_best, config):
     folder = config.save_path
-
-    torch.save(state, os.path.join(folder, "ckpt.pth.tar"))
+    ckpt_name = config.saver.ckpt_name
+    torch.save(state, os.path.join(folder, f"{ckpt_name}.pth.tar"))
     if is_best:
         shutil.copyfile(
-            os.path.join(folder, "ckpt.pth.tar"),
-            os.path.join(folder, "ckpt_best.pth.tar"),
+            os.path.join(folder, f"{ckpt_name}.pth.tar"),
+            os.path.join(folder, f"{ckpt_name}_best.pth.tar"),
         )
 
     if config.saver.get(
@@ -87,8 +86,8 @@ def save_checkpoint(state, is_best, config):
     ):  # default: save checkpoint after validate()
         epoch = state["epoch"]
         shutil.copyfile(
-            os.path.join(folder, "ckpt.pth.tar"),
-            os.path.join(folder, f"ckpt_{epoch}.pth.tar"),
+            os.path.join(folder, f"{ckpt_name}.pth.tar"),
+            os.path.join(folder, f"{ckpt_name}_{epoch}.pth.tar"),
         )
 
 
