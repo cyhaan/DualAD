@@ -90,7 +90,7 @@ sh train.sh
 cd ./experiments/MVTec-AD/
 sh eval.sh
 ```
-- To evaluate the MGCFR model on **MVTec-AD**, please firstly set `saver.load_path` field in `./experiments/VisA/config.yaml` to load the checkpoints, then run:
+- To evaluate the MGCFR model on **VisA**, please firstly set `saver.load_path` field in `./experiments/VisA/config.yaml` to load the checkpoints, then run:
 ```eval
 cd ./experiments/VisA/
 sh eval.sh
