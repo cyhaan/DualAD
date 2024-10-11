@@ -1,5 +1,5 @@
 
-# MGCFR
+# DualAD
 
 This repository contains the source code for the official implementation in PyTorch of "Multi-head Memory Guided Cascaded Feature Reconstruction For Multi-Class Unsupervised Anomaly Localization" . 
 ![Image text](docs/MGCFR.jpg)
