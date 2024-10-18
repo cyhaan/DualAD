@@ -1,1 +1,1 @@
-from .mgcfr import MGCFR
+from .dualad import DualAD

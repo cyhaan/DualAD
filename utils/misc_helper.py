@@ -178,7 +178,7 @@ def to_device(input, device="cuda", dtype=None):
 def update_config(config):
     # update feature size
     _, reconstruction_type = config.net[2].type.rsplit(".", 1)
-    if reconstruction_type in ("UniAD", "MGCFR"):
+    if reconstruction_type in ("UniAD", "DualAD"):
         input_size = config.dataset.input_size
         outstride = config.net[1].kwargs.outstrides[0]
         assert (

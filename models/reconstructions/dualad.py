@@ -5,10 +5,11 @@ from einops import rearrange
 from models.initializer import initialize_from_cfg
 from torch import Tensor, nn
 
-class MGCFR(nn.Module):
-    def __init__(self, inplanes, instrides, feature_size, feature_noise, neighbor_mask, proj_mlp_ratio, memory_module,
-                 hidden_dim, nhead, dim_feedforward, dropout, num_encoder_layers, num_decoder_layers, pos_embed_type,
-                 activation, predict, initializer, ):
+class DualAD(nn.Module):
+    def __init__(self, inplanes, instrides, feature_size, feature_jitter, neighbor_mask, proj_head_dim, proj_mlp_ratio,
+                 num_in_proj_layers, num_out_proj_layers, hidden_dim, nhead, dim_feedforward, dropout, num_encoder_layers,
+                 num_decoder_layers, pos_embed_type, activation, predict, initializer,memory_module=None, skip=False,
+                 proj_type="transformer"):
 
         super().__init__()
         assert isinstance(inplanes, list)
@@ -16,31 +17,41 @@ class MGCFR(nn.Module):
         self.inplanes = inplanes
         self.instrides = instrides
         self.feature_size = feature_size
-        self.feature_noise = feature_noise
+        self.feature_jitter = feature_jitter
         self.predict = predict
         self.embed_dim = hidden_dim
         self.neighbor_mask = neighbor_mask
 
         abs_pos_embed = PositionEmbeddingLearned(
             feature_size, hidden_dim) if pos_embed_type == 'learned' else None
+        abs_pos_embed_proj = nn.Sequential(
+            abs_pos_embed,
+            nn.Linear(hidden_dim, proj_head_dim * num_decoder_layers)
+        ) if pos_embed_type == 'learned' and proj_type=='transformer'else None
 
-        in_dims = sum(inplanes)
-        out_dims = hidden_dim * num_decoder_layers
-        hid_dims = int((in_dims + out_dims) * proj_mlp_ratio)
-        self.in_proj = nn.Sequential(
-            nn.Linear(in_dims, hid_dims),
-            _get_activation_layer(activation),
-            nn.Linear(hid_dims, out_dims)
+        self._make_proj_layer(
+            proj_type,
+            sum(inplanes),
+            proj_head_dim * num_decoder_layers,
+            proj_mlp_ratio,
+            num_in_proj_layers,
+            num_out_proj_layers,
+            activation=activation,
+            nhead=nhead,
+            dropout=dropout,
+            abs_pos_embed=abs_pos_embed_proj,
         )
-        self.out_proj = nn.Sequential(
-            nn.Linear(out_dims, hid_dims),
-            _get_activation_layer(activation),
-            nn.Linear(hid_dims, in_dims)
-        )
-        # Memory Module
+
+        self.head_proj1 = nn.Linear(
+            proj_head_dim * num_decoder_layers, hidden_dim * num_decoder_layers) if proj_head_dim != hidden_dim else nn.Identity()
+        self.head_proj2 = nn.Linear(
+            hidden_dim * num_decoder_layers, proj_head_dim * num_decoder_layers) if proj_head_dim != hidden_dim else nn.Identity()
+
         self.memory_modules = nn.ModuleList([
-            MemoryModule(**memory_module) for _ in range(num_decoder_layers)
-        ])
+            MemoryModule(embed_dim=hidden_dim, **memory_module) for _ in range(num_decoder_layers)
+        ]) if memory_module else None
+        self.skip = skip
+
         # Encoder
         self.encoder = TransformerEncoder(
             num_encoder_layers,
@@ -49,7 +60,7 @@ class MGCFR(nn.Module):
             dim_feedforward=dim_feedforward,
             abs_pos_embed=abs_pos_embed,
             activation=activation,
-            dropout=dropout
+            dropout=dropout,
         )
         self.decoder = TransformerDecoder(
             num_decoder_layers,
@@ -58,9 +69,52 @@ class MGCFR(nn.Module):
             dim_feedforward=dim_feedforward,
             abs_pos_embed=abs_pos_embed,
             activation=activation,
-            dropout=dropout
+            dropout=dropout,
+            feature_size=feature_size,
         )
         initialize_from_cfg(self, initializer)
+
+    def _make_proj_layer(self, proj_type, in_dim, out_dim, proj_mlp_ratio, num_in_proj_layers, num_out_proj_layers,activation,**kwargs):
+        self.in_proj, self.out_proj, self.proj_encoder, self.proj_decoder = None, None, None, None
+        if proj_type=='transformer':
+            self.in_proj = nn.Linear(in_dim, out_dim)
+            self.out_proj = nn.Linear(out_dim, in_dim)
+            self.proj_encoder = TransformerEncoder(
+                num_in_proj_layers,
+                hidden_dim=out_dim,
+                dim_feedforward=int(out_dim * proj_mlp_ratio),
+                activation=activation,
+                **kwargs
+            )
+            self.proj_decoder = TransformerDecoder(
+                num_out_proj_layers,
+                hidden_dim=out_dim,
+                dim_feedforward=int(out_dim * proj_mlp_ratio),
+                activation=activation,
+                learned_q=True,
+                feature_size=self.feature_size,
+                **kwargs
+            )
+        elif proj_type=='mlp':
+            layers = []
+            hidden_dims = [in_dim] + [int(out_dim * proj_mlp_ratio)] * num_in_proj_layers + [out_dim]
+
+            for i in range(0,len(hidden_dims)-1):
+                layers.append(nn.Linear(hidden_dims[i],hidden_dims[i+1]))
+                if i < len(hidden_dims)-2:
+                    layers.append( _get_activation_layer(activation))
+            self.in_proj = nn.Sequential(*layers)
+
+            layers = []
+            hidden_dims = [out_dim] + [int(out_dim * proj_mlp_ratio)] * num_out_proj_layers + [in_dim]
+            for i in range(0,len(hidden_dims)-1):
+                layers.append(nn.Linear(hidden_dims[i],hidden_dims[i+1]))
+                if i < len(hidden_dims)-2:
+                    layers.append( _get_activation_layer(activation))
+            self.out_proj = nn.Sequential(*layers)
+        else:
+            raise RuntimeError(f"proj_type should be transformer/mlp, not {proj_type}.")
+
 
     def generate_mask(self, feature_size, neighbor_size):
         """
@@ -90,27 +144,20 @@ class MGCFR(nn.Module):
 
     def to_anomaly(self, x):
         # x : (B,N,D)
-        std = x.var(dim=1, keepdim=True).sqrt()
-        noise = torch.randn(x.shape, device=x.device) * std
-        scale = self.feature_noise.scale
+        if self.feature_jitter.jitter_wise=="spatial":
+            std = x.var(dim=1, keepdim=True).sqrt()
+            noise = torch.randn(x.shape, device=x.device) * std
+        else:
+            batch_size, num_tokens, dim_channel = x.shape
+            feature_norms = (
+                   x.norm(dim=2, keepdim=True) / dim_channel
+            )  # (H x W) x B x 1
+            noise = torch.randn((batch_size, num_tokens, dim_channel), device=x.device) * feature_norms
+
+        scale = self.feature_jitter.scale
         noise = noise * scale
         x = x + noise
         return x
-
-    def to_memories(self, x):
-        x = self.in_proj(x)
-        # Split heads
-        feats = list(torch.split(x, self.embed_dim, dim=-1))
-        # Memory addressing
-        outs = [block(feat) for feat, block in zip(feats, self.memory_modules)]
-        attn_weights, attn_weights_max, memories_attn, memories_qtz = [list(item) for item in zip(*outs)]
-        return {
-            "feats_proj": feats,
-            "attn_weights": attn_weights,
-            "attn_weights_max": attn_weights_max,
-            "memories_attn": memories_attn,
-            "memories_qtz": memories_qtz
-        }
 
     def cal_anomaly_score(self, feature_align, feature_rec):
         feats_align = feature_align.split(self.inplanes, dim=1)
@@ -122,19 +169,11 @@ class MGCFR(nn.Module):
         pred_image = pred_image.flatten(1).max(axis=1)[0]
         return pred_pixel, pred_image
 
-
     def forward(self, input):
         feature_align = input["feature_align"]
         x = rearrange(
             feature_align, "b c h w -> b (h w) c"
         )
-        mem_outs = self.to_memories(x)
-        mems_input = mem_outs
-        mems_anomal = None
-        if self.training and self.feature_noise:
-            feature_anomal = self.to_anomaly(x)
-            mem_outs = self.to_memories(feature_anomal)
-            mems_anomal = mem_outs
         if self.neighbor_mask:
             mask = self.generate_mask(
                 self.feature_size, self.neighbor_mask.neighbor_size
@@ -144,10 +183,36 @@ class MGCFR(nn.Module):
             mask_dec2 = mask if self.neighbor_mask.mask[2] else None
         else:
             mask_enc = mask_dec1 = mask_dec2 = None
-        memories = mem_outs["memories_attn"]
+
+        if self.training and self.feature_jitter:
+            x = self.to_anomaly(x)
+
+        x = self.in_proj(x)
+        if self.proj_encoder:
+            x = self.proj_encoder(x,mask_enc)
+
+        shortcut = x
+
+        x = self.head_proj1(x)
+
+        memories = list(torch.split(x, self.embed_dim, dim=-1))
+        if self.memory_modules:
+            memories = [block(feat)[1] for feat, block in zip(memories, self.memory_modules)]
+
         enc_out = self.encoder(sum(memories), mask_enc)
-        dec_outs = self.decoder(memories, enc_out, mask_dec1, mask_dec2)
-        x = self.out_proj(torch.cat(dec_outs, dim=-1))
+        dec_outs = self.decoder(enc_out, memories, trg_mask=mask_dec1, src_mask=mask_dec2)
+
+        x = torch.cat(dec_outs, dim=-1)
+
+        x = self.head_proj2(x)
+
+        if self.skip:
+            x = x + shortcut
+
+        if self.proj_decoder:
+            x = self.proj_decoder(x, trg_mask=mask_dec1, src_mask=mask_dec2)[-1]
+        x = self.out_proj(x)
+
         feature_rec = rearrange(x, " b (h w) d -> b d h w ", h=self.feature_size[0])
 
         pred_pixel = None
@@ -157,16 +222,13 @@ class MGCFR(nn.Module):
         return {
             "feature_rec": feature_rec,
             "feature_align": feature_align,
-            "mems_input": mems_input,
-            "mems_anomal": mems_anomal,
             "pred_pixel": pred_pixel,
             "pred_image": pred_image,
             "outplanes": self.inplanes
         }
 
-
 class MemoryModule(nn.Module):
-    def __init__(self, num_embeds, embed_dim, init_norm=1, scale=None, shrink_thres=None):
+    def __init__(self, num_embeds, embed_dim, init_norm=1., scale=1., shrink_thres=None):
         super().__init__()
         self.num_embeds = num_embeds
         self.embed_dim = embed_dim
@@ -193,13 +255,11 @@ class MemoryModule(nn.Module):
         attn_weight = F.normalize(attn_weight, p=1, dim=-1)
 
         attn_out = F.linear(attn_weight, self.weight.transpose(0, 1))
-        attn_weight_max, slices = attn_weight.max(dim=-1, keepdim=True)
-        qtz_out = self.weight[slices.flatten()].view(x.shape)
 
-        return attn_weight, attn_weight_max, attn_out, qtz_out
-
+        return attn_weight, attn_out
     def extra_repr(self) -> Tensor:
         return 'num_embeds={num_embeds}, embed_dim={embed_dim}'.format(**self.__dict__)
+
 
 
 class TransformerEncoder(nn.Module):
@@ -216,14 +276,22 @@ class TransformerEncoder(nn.Module):
 
 
 class TransformerDecoder(nn.Module):
-    def __init__(self, num_layers, **kwargs):
+    def __init__(self, num_layers, feature_size, hidden_dim, learned_q=False, **kwargs):
         super().__init__()
+        self.learned_queries = nn.ModuleList([
+            QueryLearned(feature_size, hidden_dim) for _ in range(num_layers)
+        ]) if learned_q else None
         self.layers = nn.ModuleList([
-            TransformerDecoderLayer(**kwargs) for _ in range(num_layers)
+            TransformerDecoderLayer(hidden_dim=hidden_dim, **kwargs) for _ in range(num_layers)
         ])
 
-    def forward(self, feats, enc_out, trg_mask=None, src_mask=None):
+    def forward(self, enc_out, feats=None, trg_mask=None, src_mask=None):
         outputs = []
+        if self.learned_queries:
+            features = []
+            for i, lq in enumerate(self.learned_queries):
+                features.append(lq(enc_out))
+            feats = features
         x = enc_out
         for feat, layer in zip(feats, self.layers):
             x = layer(feat, x, enc_out, trg_mask, src_mask)
@@ -244,7 +312,7 @@ class TransformerEncoderLayer(nn.Module):
 
     def forward(self, x, mask=None):
         shortcut = x
-        q = k = self.abs_pos_embed(x)
+        q = k = self.abs_pos_embed(x)+x
         x = self.attn(q, k, value=x, mask=mask)
         x = x + shortcut
         x = self.norm1(x)
@@ -257,7 +325,7 @@ class TransformerEncoderLayer(nn.Module):
 
 
 class TransformerDecoderLayer(nn.Module):
-    def __init__(self, hidden_dim, nhead, dim_feedforward, abs_pos_embed=None, activation="relu", dropout=0.1):
+    def __init__(self, hidden_dim, nhead, dim_feedforward, abs_pos_embed=None, activation="relu", dropout=0.1,):
         super().__init__()
         self.attn1 = MultiHeadAttention(hidden_dim, nhead, dropout=dropout)
         self.attn2 = MultiHeadAttention(hidden_dim, nhead, dropout=dropout)
@@ -271,14 +339,14 @@ class TransformerDecoderLayer(nn.Module):
 
     def forward(self, x, dec_out, enc_out, trg_mask=None, src_mask=None):
         shortcut = x
-        q = self.abs_pos_embed(x)
-        k = self.abs_pos_embed(enc_out)
+        q = self.abs_pos_embed(x)+x
+        k = self.abs_pos_embed(enc_out)+enc_out
         x = self.attn1(q, k, value=enc_out, mask=src_mask)
         x = x + shortcut
         x = self.norm1(x)
         shortcut = x
-        q = self.abs_pos_embed(x)
-        k = self.abs_pos_embed(dec_out)
+        q = self.abs_pos_embed(x)+x
+        k = self.abs_pos_embed(dec_out)+dec_out
         x = self.attn2(q, k, value=dec_out, mask=trg_mask)
         x = x + shortcut
         x = self.norm2(x)
@@ -350,6 +418,21 @@ class FeedForward(nn.Module):
         x = self.fc2(x)
         x = self.dropout(x)
         return x
+class QueryLearned(nn.Module):
+    def __init__(self, feature_size, embed_dim):
+        super().__init__()
+        self.feature_size = feature_size  # H, W
+        self.embed_dim = embed_dim
+        self.weight = nn.Parameter(torch.Tensor(self.feature_size[0]*self.feature_size[1], self.embed_dim))
+        self.reset_parameters()
+    def forward(self, x):
+        batch_size,_,_ = x.shape
+        return torch.stack([self.weight] * batch_size, dim=0)
+    def reset_parameters(self):
+        nn.init.normal_(self.weight)
+
+    def extra_repr(self) -> Tensor:
+        return 'feature_size={feature_size}, embed_dim={embed_dim}'.format(**self.__dict__)
 
 
 class PositionEmbeddingLearned(nn.Module):
@@ -377,8 +460,8 @@ class PositionEmbeddingLearned(nn.Module):
             torch.stack([self.col_embed] * self.feature_size[0], dim=0),  # H x W x C // 2
             torch.stack([self.row_embed] * self.feature_size[1], dim=1)  # H x W x C // 2
         ], dim=-1).flatten(0, 1).unsqueeze(0)  # 1 x (H x W) x (C // 2 x 2)
-        x = x + pos
-        return x
+        # x = x + pos
+        return pos
 
     def extra_repr(self) -> Tensor:
         return 'feature_size={feature_size}, embed_dim={embed_dim}'.format(**self.__dict__)

@@ -1,5 +1,6 @@
 from .efficientnet import *  # noqa F401
 from .resnet import *  # noqa F401
+from .vision_transformer import *
 
 backbone_info = {
     "resnet18": {
@@ -73,5 +74,10 @@ backbone_info = {
         "blocks": [2, 8, 14, 30, 44],
         "planes": [32, 40, 72, 200, 576],
         "strides": [2, 4, 8, 16, 32],
+    },
+    "vit_small_patch16_224_dino": {
+        "layers": [i for i in range(1, 13)],
+        "planes": [384] * 12,
+        "strides": [16] * 12,
     },
 }

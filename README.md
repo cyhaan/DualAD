@@ -1,8 +1,9 @@
 
 # DualAD
 
-This repository contains the source code for the official implementation in PyTorch of "Multi-head Memory Guided Cascaded Feature Reconstruction For Multi-Class Unsupervised Anomaly Localization" . 
-![Image text](docs/MGCFR.jpg)
+This repository contains the source code for the official implementation in PyTorch of "DualAD: Exploring Coupled Dual-Branch Networks for Multi-class
+Unsupervised Anomaly Detection" . 
+![Image text](docs/DualAD.png)
 
 
 ## 1. Dependencies
@@ -73,24 +74,24 @@ Pillow==8.4.0
 
 ## 3. Training
 
-- To train the MGCFR model on **MVTec-AD**, please run:
+- To train the DualAD model on **MVTec-AD**, please run:
 ```train
 cd ./experiments/MVTec-AD/
 sh train.sh
 ```
-- To train the MGCFR model on **VisA**, please run:
+- To train the DualAD model on **VisA**, please run:
 ```train
 cd ./experiments/VisA/
 sh train.sh
 ```
 
 ## 4. Evaluation
-- To evaluate the MGCFR model on **MVTec-AD**, please firstly set `saver.load_path` field in `./experiments/MVTec-AD/config.yaml` to load the checkpoints, then run:
+- To evaluate the DualAD model on **MVTec-AD**, please firstly set `saver.load_path` field in `./experiments/MVTec-AD/config.yaml` to load the checkpoints, then run:
 ```eval
 cd ./experiments/MVTec-AD/
 sh eval.sh
 ```
-- To evaluate the MGCFR model on **VisA**, please firstly set `saver.load_path` field in `./experiments/VisA/config.yaml` to load the checkpoints, then run:
+- To evaluate the DualAD model on **VisA**, please firstly set `saver.load_path` field in `./experiments/VisA/config.yaml` to load the checkpoints, then run:
 ```eval
 cd ./experiments/VisA/
 sh eval.sh
@@ -98,9 +99,9 @@ sh eval.sh
 
 ## 5. Pre-trained Models
 
-You can download pretrained MGCFR models here:
-- [MGCFR checkpoint](https://drive.google.com/file/d/1Le7mzFqhKKVpPLqweuSo_nO1Urm-7BrQ/view?usp=drive_link) trained on all categories of **MVTec-AD** dataset. 
-- [MGCFR checkpoint](https://drive.google.com/file/d/1oUcUT1qM8ScR91-zIQjXxYuNlR7miDuw/view?usp=drive_link) trained on all categories of **VisA** dataset. 
+You can download pretrained DualAD models here:
+- [DualAD checkpoint](https://drive.google.com/file/d/1Le7mzFqhKKVpPLqweuSo_nO1Urm-7BrQ/view?usp=drive_link) trained on all categories of **MVTec-AD** dataset. 
+- [DualAD checkpoint](https://drive.google.com/file/d/1oUcUT1qM8ScR91-zIQjXxYuNlR7miDuw/view?usp=drive_link) trained on all categories of **VisA** dataset. 
 
 
 
@@ -110,13 +111,13 @@ Our model achieves the following performance on:
 
 
 ### 6.1 MVTec-AD
-| Model name | Detection AUROC | Localization AUROC |
-|------------|-----------------|--------------------|
-| MGCFR      | 99.0            | 98.1               |
+| Model name | I-AUROC | I-AP | I-F1_max | P-AUROC | P-AP | P-F1_max | P-AUPRO |
+|------------|---------|------|----------|---------|------|----------|---------|
+| DualAD     | 99.0    | 99.7 | 98.3     | 98.2    | 51.6 | 56.8     | 91.6    |
 ### 6.2 VisA
-| Model name | Detection AUROC | Localization AUROC |
-|------------|-----------------|--------------------|
-| MGCFR      | 94.4            | 98.9               |
+| Model name | I-AUROC | I-AP | I-F1_max | P-AUROC | P-AP | P-F1_max | P-AUPRO |
+|------------|---------|------|----------|---------|------|----------|---------|
+| DualAD     | 94.7    | 95.9 | 91.2     | 98.9    | 37.6 | 41.4     | 87.9    |
 
 
 

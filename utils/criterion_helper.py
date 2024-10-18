@@ -19,27 +19,18 @@ class FeatureMSELoss(nn.Module):
             return sum(losses) / len(losses)
 
 
-class CosinConsistentLoss(nn.Module):
-    def __init__(self, weight, threshold=0., return_type="sum"):
+class ImageMSELoss(nn.Module):
+    """Train a decoder for visualization of reconstructed features"""
+
+    def __init__(self, weight):
         super().__init__()
-        self.criterion_cos = nn.CosineSimilarity(dim=-1)
+        self.criterion_mse = nn.MSELoss()
         self.weight = weight
-        self.threshold = threshold
-        self.return_type = return_type
 
     def forward(self, input):
-        if input["mems_anomal"] is None:
-            return 0
-
-        losses = [
-            torch.mean(torch.clip(1 - self.criterion_cos(f1, f2) - self.threshold, min=0))
-            for f1, f2 in zip(input["mems_input"]["memories_attn"], input["mems_anomal"]["memories_attn"])
-        ]
-        if self.return_type == "sum":
-            return sum(losses)
-        else:
-            return sum(losses) / len(losses)
-
+        image = input["image"]
+        image_rec = input["image_rec"]
+        return self.criterion_mse(image, image_rec)
 
 
 def build_criterion(config):
