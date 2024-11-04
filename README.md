@@ -100,6 +100,7 @@ sh eval.sh
 ## 5. Pre-trained Models
 
 You can download pretrained DualAD models here:
+
 - [DualAD checkpoint](https://drive.google.com/file/d/1Le7mzFqhKKVpPLqweuSo_nO1Urm-7BrQ/view?usp=drive_link) trained on all categories of **MVTec-AD** dataset. 
 - [DualAD checkpoint](https://drive.google.com/file/d/1oUcUT1qM8ScR91-zIQjXxYuNlR7miDuw/view?usp=drive_link) trained on all categories of **VisA** dataset. 
 

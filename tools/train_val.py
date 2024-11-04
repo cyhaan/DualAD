@@ -27,7 +27,7 @@ from utils.misc_helper import (
 from utils.optimizer_helper import get_optimizer
 from utils.vis_helper import visualize_compound
 
-parser = argparse.ArgumentParser(description="MGCFR Framework")
+parser = argparse.ArgumentParser(description="DualAD Framework")
 parser.add_argument("--config", default="./config.yaml")
 parser.add_argument("-e", "--evaluate", action="store_true")
 parser.add_argument("-d", "--debug", action="store_true")
